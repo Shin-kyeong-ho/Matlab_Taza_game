@@ -20,7 +20,7 @@ classdef MyTaza < matlab.apps.AppBase
         T1 = timer % 0.1초마다 글자 움직이기
         
         v = 0.5 %떨어지는 속도
-        counter = 10 %시간 카운트
+        counter = 5 %시간 카운트
         score = 0 %점수 
         
         msg1; % 게임오버 메시지
@@ -87,7 +87,7 @@ classdef MyTaza < matlab.apps.AppBase
             key = event.Key;
             disp(key);
             if key == app.L.String
-                disp('굿');
+                disp('정답');
                 app.score = app.score + 1;
                 app.Label.Text = num2str(app.score);
                 if isplaying(app.okSound)
@@ -100,9 +100,39 @@ classdef MyTaza < matlab.apps.AppBase
                 app.L.Position(2) = 10; % y-좌표
 
             else
-                disp('흠..');
+                disp('초기화');
                 play(app.errSound);
+                 if isequal(key,'space') % 스페이스 누르면 초기화
+                     if app.counter <= 0 % 시간초가 다되어서 초기화 할경우
+                         delete(app.msg1);
+                         delete(app.msg2);
+                         delete(app.msg3);
+                         delete(app.L);
+                         app.score = 0;
+                         app.Label.Text = int2str(app.score);
+                         app.counter = 10;
+                         app.CLabel.Text = int2str(app.counter);
+                         startupFcn(app)
+                         c = char('a' + randi([0 25]));
+                        app.L.String = c;
+                        app.L.Position(1) = randi([-9 9]); % x-좌표
+                        app.L.Position(2) = 10; % y-좌표
+                     else
+                        app.score = 0;
+                        app.Label.Text = int2str(app.score);
+                        app.counter = 10;
+                        app.CLabel.Text = int2str(app.counter);
+                        c = char('a' + randi([0 25]));
+                        app.L.String = c;
+                        app.L.Position(1) = randi([-9 9]); % x-좌표
+                        app.L.Position(2) = 10; % y-좌표
+                     end
+                 end
             end
+            
+            
+            
+            
         end
 
         % Close request function: UIFigure

@@ -1,0 +1,207 @@
+classdef MyTaza < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure  matlab.ui.Figure
+        TabGroup  matlab.ui.container.TabGroup
+        Tab       matlab.ui.container.Tab
+        Label     matlab.ui.control.Label
+        CLabel    matlab.ui.control.Label
+        UIAxes    matlab.ui.control.UIAxes
+        Tab_2     matlab.ui.container.Tab
+    end
+
+    
+    properties (Access = private)
+        L  % 글자, text 객체
+        okSound   % 잘 했을 때
+        errSound  % 엉뚱한 것 입력했을 때
+        T0 = timer % 1분 타미어, 1초마다 카운트 다운
+        T1 = timer % 0.1초마다 글자 움직이기
+        
+        v = 0.5 %떨어지는 속도
+        counter = 10 %시간 카운트
+        score = 0 %점수 
+        
+        msg1; % 게임오버 메시지
+        msg2;  
+        msg3;
+    end
+    
+    methods (Access = private)
+        
+        function countdown(app, ~, ~)
+            app.counter = app.counter - 1;
+            app.CLabel.Text = num2str(app.counter);
+            if app.counter <= 0
+                stop(app.T0);
+                stop(app.T1);
+                if app.counter == 0
+                    app.msg1=text(app.UIAxes,0,-3,'[GAME OVER]',"FontSize",50,"HorizontalAlignment","center");
+                    app.msg2=text(app.UIAxes,0,5,'[Score]',"FontSize",40,"HorizontalAlignment","center");
+                    app.msg3=text(app.UIAxes,0,2.3,num2str(app.score),"FontSize",40,"HorizontalAlignment","center");
+                end
+            end
+        end
+        
+        function movedown(app, obj, event)
+            y = app.L.Position(2) - app.v;
+            app.L.Position(2) = y;
+            if y <= -10
+               app.score = app.score - 1;
+                app.Label.Text = num2str(app.score);
+                app.L.Position(1) = randi([-9 9]); % x-좌표
+                app.L.Position(2) = 10; % y-좌표
+                c = char('a' + randi([0 25])); % 새로운 글자
+                app.L.String = c;  % 글자 업데이트
+            end
+        end
+    end
+    
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Code that executes after component creation
+        function startupFcn(app)
+            c = char('a' + randi([0 25]));
+            app.L = text( app.UIAxes, 0,0, c, "FontSize", 24);
+            [y,Fs] = audioread('chime.mp3');
+            app.okSound = audioplayer(y,Fs);
+            [y,Fs] = audioread('click.mp3');
+            app.errSound = audioplayer(y,Fs);
+            % 60초 카운트 다운 타이머 설정
+            app.T0.ExecutionMode = 'fixedRate';    % 고정된 주기로 동작
+            app.T0.Period        = 1;              % 타미어 함수 호출 주기
+            app.T0.TimerFcn      = @app.countdown; % 1초마다 카운트 다운
+            start(app.T0);
+            % 글자 움직이는 타이머 설정
+            app.T1.ExecutionMode = 'fixedRate';    % 고정된 주기로 동작
+            app.T1.Period        = 0.1;            % 타미어 함수 호출 주기
+            app.T1.TimerFcn      = @app.movedown;  % 글자 위치 바꾸기
+            start(app.T1);
+        end
+
+        % Key press function: UIFigure
+        function UIFigureKeyPress(app, event)
+            key = event.Key;
+            disp(key);
+            if key == app.L.String
+                disp('굿');
+                app.score = app.score + 1;
+                app.Label.Text = num2str(app.score);
+                if isplaying(app.okSound)
+                    stop(app.okSound);
+                end
+                play(app.okSound);
+                c = char('a' + randi([0 25]));
+                app.L.String = c;
+                app.L.Position(1) = randi([-9 9]); % x-좌표
+                app.L.Position(2) = 10; % y-좌표
+
+            else
+                disp('흠..');
+                play(app.errSound);
+            end
+        end
+
+        % Close request function: UIFigure
+        function UIFigureCloseRequest(app, event)
+            stop(app.T0);
+            delete(app.T0);
+            stop(app.T1);
+            delete(app.T1);
+            delete(app)
+        end
+
+        % Selection change function: TabGroup
+        function TabGroupSelectionChanged(app, event)
+            selectedTab = app.TabGroup.SelectedTab;
+            
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Position = [100 100 639 412];
+            app.UIFigure.Name = 'MATLAB App';
+            app.UIFigure.CloseRequestFcn = createCallbackFcn(app, @UIFigureCloseRequest, true);
+            app.UIFigure.KeyPressFcn = createCallbackFcn(app, @UIFigureKeyPress, true);
+
+            % Create TabGroup
+            app.TabGroup = uitabgroup(app.UIFigure);
+            app.TabGroup.SelectionChangedFcn = createCallbackFcn(app, @TabGroupSelectionChanged, true);
+            app.TabGroup.Position = [29 37 581 348];
+
+            % Create Tab
+            app.Tab = uitab(app.TabGroup);
+            app.Tab.Title = '글자';
+
+            % Create Label
+            app.Label = uilabel(app.Tab);
+            app.Label.HorizontalAlignment = 'center';
+            app.Label.FontSize = 24;
+            app.Label.Position = [465 246 54 29];
+            app.Label.Text = '0';
+
+            % Create CLabel
+            app.CLabel = uilabel(app.Tab);
+            app.CLabel.HorizontalAlignment = 'center';
+            app.CLabel.FontSize = 24;
+            app.CLabel.Position = [63 244 54 30];
+            app.CLabel.Text = '60';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.Tab);
+            zlabel(app.UIAxes, 'Z')
+            app.UIAxes.XLim = [-10 10];
+            app.UIAxes.YLim = [-10 10];
+            app.UIAxes.XTick = [];
+            app.UIAxes.YTick = [];
+            app.UIAxes.LineWidth = 2;
+            app.UIAxes.Box = 'on';
+            app.UIAxes.Position = [19 21 544 298];
+
+            % Create Tab_2
+            app.Tab_2 = uitab(app.TabGroup);
+            app.Tab_2.Title = '단어';
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = MyTaza
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            % Execute the startup function
+            runStartupFcn(app, @startupFcn)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end

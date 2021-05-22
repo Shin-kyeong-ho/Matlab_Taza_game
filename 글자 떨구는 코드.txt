@@ -1,0 +1,508 @@
+classdef MyTaza < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure      matlab.ui.Figure
+        TabGroup      matlab.ui.container.TabGroup
+        Tab           matlab.ui.container.Tab
+        Label         matlab.ui.control.Label
+        CLabel        matlab.ui.control.Label
+        UIAxes        matlab.ui.control.UIAxes
+        Tab_2         matlab.ui.container.Tab
+        CounterLabel  matlab.ui.control.Label
+        Label_2       matlab.ui.control.Label
+        InputLabel    matlab.ui.control.Label
+        UIAxes_2      matlab.ui.control.UIAxes
+        SpinnerLabel  matlab.ui.control.Label
+        Spinner       matlab.ui.control.Spinner
+    end
+
+    
+    properties (Access = private)
+        L  % 글자, text 객체
+        okSound   % 잘 했을 때
+        errSound  % 엉뚱한 것 입력했을 때
+        T0 = timer % 1분 타미어, 1초마다 카운트 다운
+        T1 = timer % 0.1초마다 글자 움직이기
+        T2 = timer % 2초마다 글자 추가
+        
+        T3 = timer % 2초마다 단어 떨어뜨리기 (단어탭)
+        T4 = timer % 2초마다 단어 생성 (단어탭)
+        
+        v = 0.5 %떨어지는 속도
+        counter = 7 %시간 카운트
+        score = 0 %점수
+        
+        score2 =0 %2번탭 점수
+        
+        msg1; % 게임오버 메시지
+        msg2;  
+        msg3;
+        
+        msg4; % 게임오버 메시지(단어탭에서)
+        msg5;  
+        msg6;
+        
+        Chs = []
+        
+        arr = {'for','while','if'};
+        W % 단어, text객체
+        Chs2 = []
+    end
+    
+    methods (Access = private)
+        
+        function countdown(app, ~, ~)
+            app.counter = app.counter - 1;
+            app.CLabel.Text = num2str(app.counter);
+            app.CounterLabel.Text = num2str(app.counter); %단어 탭에서 카운트다운
+            if app.counter <= 0
+                stop(app.T0);
+                stop(app.T1);
+                stop(app.T2);
+                if app.counter == 0
+                    app.msg1=text(app.UIAxes,0,-3,'[GAME OVER]',"FontSize",50,"HorizontalAlignment","center");
+                    app.msg2=text(app.UIAxes,0,5,'[Score]',"FontSize",40,"HorizontalAlignment","center");
+                    app.msg3=text(app.UIAxes,0,2.3,num2str(app.score),"FontSize",40,"HorizontalAlignment","center");
+                    %단어 탭에서 게임오버 메시지
+                    app.msg4=text(app.UIAxes_2,0,-3,'[GAME OVER]',"FontSize",50,"HorizontalAlignment","center");
+                    app.msg5=text(app.UIAxes_2,0,5,'[Score]',"FontSize",40,"HorizontalAlignment","center");
+                    app.msg6=text(app.UIAxes_2,0,2.3,num2str(app.score),"FontSize",40,"HorizontalAlignment","center");
+                end
+            end
+        end
+        
+        function movedown(app, obj, event)
+            y = app.L.Position(2) - app.v;
+            app.L.Position(2) = y;
+            if y <= -10
+               app.score = app.score - 1;
+                app.Label.Text = num2str(app.score);
+                app.L.Position(1) = randi([-9 9]); % x-좌표
+                app.L.Position(2) = 10; % y-좌표
+                c = char('a' + randi([0 25])); % 새로운 글자
+                app.L.String = c;  % 글자 업데이트
+            end
+        end
+        
+        function addCh(app, obj, event)
+            c = char('a'+randi([0 25]));
+            x = randi([-9 9]);
+            app.L = text(app.UIAxes, x, 10, c, 'FontSize',24);
+            app.Chs = [app.Chs, app.L];
+            
+        end
+        
+        function moveChs(app, obj, event)
+            for k = 1:length(app.Chs)
+                y = app.Chs(k).Position(2) - app.v;
+                app.Chs(k).Position(2) = y;
+            end
+            a = arrayfun( @(x) x.Position(2) <= -10, app.Chs);
+            if any(a)
+                app.score = app.score - 1;
+                app.Label.Text = num2str(app.score);
+                idx = find(a);
+%                 disp(app.Chs(idx).String);
+%                 disp(idx)
+                delCh(app,idx);
+            end
+            
+        end
+        
+        function delCh(app, idx)
+              arrayfun( @(x) delete(app.Chs(x)), idx);
+            app.Chs(idx) = [];
+        end
+        
+        
+        function addWord(app, obj, event) %단어 생성
+            c = randi(length(app.arr));
+            app.W = text(app.UIAxes_2, 0,0,char(app.arr(1)), "FontSize", 24);
+            disp(app.arr(1))
+            r = randi([-10 9]); % 좌우 랜덤
+            app.W.Position = [ r 10 0];
+            
+            app.Chs2 = [app.Chs2, app.W]
+        end
+        
+        function downWord(app, obj, event)
+            y = app.W.Position(2) - app.v;
+            app.W.Position(2) = y;
+            if y <= -10
+               app.score = app.score - 1;
+                app.CounterLabel.Text = num2str(app.score);
+            end
+        end
+        
+        
+        function moveWord(app, obj, event)
+            for k = 1:length(app.Chs2)
+                y = app.Chs2(k).Position(2) - app.v;
+                app.Chs2(k).Position(2) = y;
+            end
+            a = arrayfun( @(x) x.Position(2) <= -10, app.Chs2);
+            if any(a)
+                app.score2 = app.score2 - 1;
+                app.Label_2.Text = num2str(app.score2);
+                idx = find(a);
+                delCh(app,idx);
+            end
+        end
+    end
+    
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Code that executes after component creation
+        function startupFcn(app)
+            [y,Fs] = audioread('chime.mp3');
+            app.okSound = audioplayer(y,Fs);
+            [y,Fs] = audioread('click.mp3');
+            app.errSound = audioplayer(y,Fs);
+            % 60초 카운트 다운 타이머 설정
+            app.T0.ExecutionMode = 'fixedRate';    % 고정된 주기로 동작
+            app.T0.Period        = 1;              % 타미어 함수 호출 주기
+            app.T0.TimerFcn      = @app.countdown; % 1초마다 카운트 다운
+            start(app.T0);
+            
+            % 글자 움직이는 타이머 설정
+            app.T1.ExecutionMode = 'fixedRate';    % 고정된 주기로 동작
+            app.T1.Period        = 0.1;            % 타미어 함수 호출 주기
+            app.T1.TimerFcn      = @app.moveChs;  % 글자 위치 바꾸기
+            start(app.T1);
+            
+            % 2초마다 글자 생성
+            app.T2.ExecutionMode = 'fixedRate';    % 고정된 주기로 동작
+            app.T2.Period        = 2;            % 타미어 함수 호출 주기
+            app.T2.TimerFcn      = @app.addCh;  % 글자 위치 바꾸기
+            start(app.T2);
+            
+            % 단어 떨어이는 타이머 설정
+            app.T3.ExecutionMode = 'fixedRate';    % 고정된 주기로 동작
+            app.T3.Period        = 0.1;            % 타미어 함수 호출 주기
+            app.T3.TimerFcn      = @app.moveWord;  % 글자 위치 바꾸기
+            start(app.T3);
+            
+            % 2초마다 단어 생엉
+            app.T4.ExecutionMode = 'fixedRate';    % 고정된 주기로 동작
+            app.T4.Period        = 2;            % 타미어 함수 호출 주기
+            app.T4.TimerFcn      = @app.addWord;  % 글자 위치 바꾸기
+            start(app.T4)
+            
+        end
+
+        % Key press function: UIFigure
+        function UIFigureKeyPress(app, event)
+            key = event.Key;
+            disp(key);
+            if isequal(key,'space')
+                if app.counter <= 0
+                     delete(app.msg1);
+                     delete(app.msg2);
+                     delete(app.msg3);
+                     delete(app.msg4);
+                     delete(app.msg5);
+                     delete(app.msg6);
+                     %카운터 및 스코어 초기화
+                     app.counter = 20;
+                     app.CLabel.Text = num2str(app.counter);
+                     app.score = 0;
+                     app.Label.Text = num2str(app.score);
+                     
+                     delCh(app,1:length(app.Chs)); %글자 전부 지우기
+                     start(T0)
+
+                else
+                    app.counter = 20;
+                    app.CLabel.Text = num2str(app.counter);
+                    app.score = 0;
+                    app.Label.Text = num2str(app.score);
+                    delCh(app,1:length(app.Chs)); %글자 전부 지우기
+
+                end
+            elseif isequal(key,'return')
+                disp('엔터')
+            else
+            a = arrayfun( @(x) x.String == key, app.Chs);
+            disp(find(a))
+            idx = find(a)
+            if any(idx)
+                app.score = app.score + 1;
+                app.Label.Text = num2str(app.score);
+                if isplaying(app.okSound)
+                     stop(app.okSound);
+                end
+                play(app.okSound);
+                if length(idx)==1
+                    app.Chs(idx).Position(2) = 14; %위로 올려치기
+                    disp('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+                    x = randi([-9 9]);
+                    app.Chs(idx).Position(1) = x; %좌우 바꾸기
+                    
+                    c = char('a'+randi([0 25]));
+                    app.Chs(idx).String = c ; %랜덤바꾸기
+                else
+                    app.Chs(idx(1)).Position(2) = 14; %위로 올려치기
+                    
+                    x = randi([-9 9]);
+                    app.Chs(idx(1)).Position(1) = x; %좌우 바꾸기
+                    
+                    c = char('a'+randi([0 25]));
+                    app.Chs(idx(1)).String = c ; %랜덤바꾸기
+                end
+            else
+                play(app.errSound);
+            end
+                
+            end
+
+
+            
+            %delCh(app, )
+
+%             if key == app.L.String
+%                 disp('정답');
+%                 app.score = app.score + 1;
+%                 app.Label.Text = num2str(app.score);
+%                 if isplaying(app.okSound)
+%                     stop(app.okSound);
+%                 end
+%                 play(app.okSound);
+%                 c = char('a' + randi([0 25]));
+%                 app.L.String = c;
+%                 app.L.Position(1) = randi([-9 9]); % x-좌표
+%                 app.L.Position(2) = 10; % y-좌표
+% 
+%             else
+%                 disp('초기화');
+%                 play(app.errSound);
+%                  if isequal(key,'space') % 스페이스 누르면 초기화
+%                      if app.counter <= 0 % 시간초가 다되어서 초기화 할경우
+%                          delete(app.msg1);
+%                          delete(app.msg2);
+%                          delete(app.msg3);
+%                          delete(app.L);
+%                          app.score = 0;
+%                          app.Label.Text = int2str(app.score);
+%                          app.counter = 10;
+%                          app.CLabel.Text = int2str(app.counter);
+%                          startupFcn(app)
+%                          c = char('a' + randi([0 25]));
+%                         app.L.String = c;
+%                         app.L.Position(1) = randi([-9 9]); % x-좌표
+%                         app.L.Position(2) = 10; % y-좌표
+%                      else
+%                         app.score = 0;
+%                         app.Label.Text = int2str(app.score);
+%                         app.counter = 10;
+%                         app.CLabel.Text = int2str(app.counter);
+%                      end
+%                  end
+%             end
+            
+            
+            
+            
+        end
+
+        % Close request function: UIFigure
+        function UIFigureCloseRequest(app, event)
+            stop(app.T0);
+            delete(app.T0);
+            stop(app.T1);
+            delete(app.T1);
+            stop(app.T2);
+            delete(app.T2);
+            stop(app.T3);
+            delete(app.T3);
+            stop(app.T4);
+            delete(app.T4);
+            
+            delete(app)
+        end
+
+        % Selection change function: TabGroup
+        function TabGroupSelectionChanged(app, event)
+            selectedTab = app.TabGroup.SelectedTab;
+            disp(selectedTab.Tag)
+            if isequal(selectedTab.Tag,'CharacterTAB') %글자탭 눌렀을때
+                if app.counter <= 0
+                     delete(app.msg1);
+                     delete(app.msg2);
+                     delete(app.msg3);
+                     delete(app.msg4);
+                     delete(app.msg5);
+                     delete(app.msg6);
+                     app.counter = 20;
+                     app.CLabel.Text = num2str(app.counter);
+                     app.score = 0;
+
+                     % 이 부분 디버깅중 다시 채워야 함
+                else
+                    app.counter = 20;
+                    app.CLabel.Text = num2str(app.counter);
+                    app.score = 0;
+                    app.Label.Text = num2str(app.score);
+                    delCh(app,1:length(app.Chs)); %글자 전부 지우기
+                end
+            elseif isequal(selectedTab.Tag,'WordTAB') %단어탭 눌렀을때
+                if app.counter <= 0
+                     delete(app.msg1);
+                     delete(app.msg2);
+                     delete(app.msg3);
+                     delete(app.msg4);
+                     delete(app.msg5);
+                     delete(app.msg6);
+                     app.counter = 20;
+                     app.CLabel.Text = num2str(app.counter);
+                     app.score = 0;
+                     
+                     % 이 부분 디버깅중 다시 채워야 함
+                else
+                    app.counter = 20;
+                    app.CLabel.Text = num2str(app.counter);
+                    app.score = 0;
+                    app.Label.Text = num2str(app.score);
+                    delCh(app,1:length(app.Chs)); %글자 전부 지우기
+                end
+            end
+        end
+
+        % Value changed function: Spinner
+        function SpinnerValueChanged(app, event)
+            value = app.Spinner.Value;
+            app.v = value
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Position = [100 100 639 412];
+            app.UIFigure.Name = 'MATLAB App';
+            app.UIFigure.CloseRequestFcn = createCallbackFcn(app, @UIFigureCloseRequest, true);
+            app.UIFigure.KeyPressFcn = createCallbackFcn(app, @UIFigureKeyPress, true);
+
+            % Create TabGroup
+            app.TabGroup = uitabgroup(app.UIFigure);
+            app.TabGroup.SelectionChangedFcn = createCallbackFcn(app, @TabGroupSelectionChanged, true);
+            app.TabGroup.Position = [29 37 581 348];
+
+            % Create Tab
+            app.Tab = uitab(app.TabGroup);
+            app.Tab.Title = '글자';
+            app.Tab.Tag = 'CharacterTAB';
+
+            % Create Label
+            app.Label = uilabel(app.Tab);
+            app.Label.HorizontalAlignment = 'center';
+            app.Label.FontSize = 24;
+            app.Label.Position = [514 265 54 29];
+            app.Label.Text = '0';
+
+            % Create CLabel
+            app.CLabel = uilabel(app.Tab);
+            app.CLabel.HorizontalAlignment = 'center';
+            app.CLabel.FontSize = 24;
+            app.CLabel.Position = [31 264 54 30];
+            app.CLabel.Text = '60';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.Tab);
+            zlabel(app.UIAxes, 'Z')
+            app.UIAxes.XLim = [-10 10];
+            app.UIAxes.YLim = [-10 10];
+            app.UIAxes.XTick = [];
+            app.UIAxes.YTick = [];
+            app.UIAxes.LineWidth = 2;
+            app.UIAxes.Box = 'on';
+            app.UIAxes.Position = [1 1 579 318];
+
+            % Create Tab_2
+            app.Tab_2 = uitab(app.TabGroup);
+            app.Tab_2.Title = '단어';
+            app.Tab_2.Tag = 'WordTAB';
+
+            % Create CounterLabel
+            app.CounterLabel = uilabel(app.Tab_2);
+            app.CounterLabel.FontSize = 24;
+            app.CounterLabel.Position = [53 265 32 29];
+            app.CounterLabel.Text = '60';
+
+            % Create Label_2
+            app.Label_2 = uilabel(app.Tab_2);
+            app.Label_2.FontSize = 24;
+            app.Label_2.Position = [543 265 25 29];
+            app.Label_2.Text = '0';
+
+            % Create InputLabel
+            app.InputLabel = uilabel(app.Tab_2);
+            app.InputLabel.FontSize = 24;
+            app.InputLabel.Position = [214 36 315 32];
+            app.InputLabel.Text = '이곳에 타자가 입력됩니다..';
+
+            % Create UIAxes_2
+            app.UIAxes_2 = uiaxes(app.Tab_2);
+            app.UIAxes_2.XLim = [-10 10];
+            app.UIAxes_2.YLim = [-10 10];
+            app.UIAxes_2.XTick = [];
+            app.UIAxes_2.YTick = [];
+            app.UIAxes_2.LineWidth = 2;
+            app.UIAxes_2.FontSize = 24;
+            app.UIAxes_2.Box = 'on';
+            app.UIAxes_2.Position = [1 1 580 318];
+
+            % Create SpinnerLabel
+            app.SpinnerLabel = uilabel(app.UIFigure);
+            app.SpinnerLabel.HorizontalAlignment = 'right';
+            app.SpinnerLabel.Position = [58 16 29 22];
+            app.SpinnerLabel.Text = '속도';
+
+            % Create Spinner
+            app.Spinner = uispinner(app.UIFigure);
+            app.Spinner.Step = 0.1;
+            app.Spinner.Limits = [0 Inf];
+            app.Spinner.ValueChangedFcn = createCallbackFcn(app, @SpinnerValueChanged, true);
+            app.Spinner.Position = [102 16 100 22];
+            app.Spinner.Value = 0.5;
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = MyTaza
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            % Execute the startup function
+            runStartupFcn(app, @startupFcn)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
